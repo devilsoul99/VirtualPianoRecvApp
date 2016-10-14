@@ -72,14 +72,14 @@ public class VirtualPianoRecv {
 		return;
 	}
 	
-	private static void onFrameReceived(byte[] frame){
+	private static void onFrameReceived(byte[] frame, int frameSeq){
 		/*
 		 * This function is called every time when program received a
 		 * new frame of image, we import it to the ImageProcessor class.
 		 */
 		GUI.frameRateUpdate();
 		if(!GPU.importFrame(frame)){
-			GUI.addLog("Failed to convert YV12 image.");
+			GUI.addLog("Failed to convert YV12 image on frame " + frameSeq + ".");
 			return;
 		}
 		return;
@@ -166,7 +166,7 @@ public class VirtualPianoRecv {
 				 */
 				recvPacketCount = 0;
 				recvFrameCount++;
-				onFrameReceived(recvFrame);
+				onFrameReceived(recvFrame,recvFrameCount);
 			}
 		}
 	}
