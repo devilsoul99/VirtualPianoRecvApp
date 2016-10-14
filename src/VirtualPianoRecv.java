@@ -38,6 +38,7 @@ public class VirtualPianoRecv {
 	 * Global variable declarations
 	 */
 	private static UserInterface GUI;
+	private static ImageProcessor GPU;
 	private static boolean isServerSocketCreated;
 	
 	private static DatagramSocket createSocket(){
@@ -71,6 +72,19 @@ public class VirtualPianoRecv {
 		return;
 	}
 	
+	private static void onFrameReceived(byte[] frame){
+		/*
+		 * This function is called every time when program received a
+		 * new frame of image, we import it to the ImageProcessor class.
+		 */
+		GUI.frameRateUpdate();
+		if(!GPU.importFrame(frame)){
+			GUI.addLog("Failed to convert YV12 image.");
+			return;
+		}
+		return;
+	}
+	
 	public static void main(String[] args) {
 		/*
 		 * Local Variable declarations
@@ -78,7 +92,7 @@ public class VirtualPianoRecv {
 		int recvPacketCount = 0,
 		    recvPacketError = 0,
 		    recvFrameCount = 0;
-		byte[] recvFrame;
+		byte[] recvFrame = new byte[FRAME_SIZE];
 		/*
 		 * First, we create a GUI for the user using another implemented class,
 		 * It will handle all the output functions.
@@ -97,10 +111,63 @@ public class VirtualPianoRecv {
 		/*
 		 * Ready to receive data from mobile device.
 		 */
-		recvFrame = new byte[PACKET_SIZE];
 		GUI.addLog("Start Listening.");
+		
 		while(isServerSocketCreated){
+			GUI.trafficUpdate(recvPacketCount,recvPacketError,recvFrameCount);
 			
+			/*
+			 * Allocates memory for incoming data.
+			 */
+			byte[] receiveData = new byte[PACKET_SIZE];
+			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+			
+			/*
+			 * Try to receive data packet from client.
+			 */
+			try {
+				serverSocket.receive(receivePacket);
+			} catch (IOException e) {
+				recvPacketError++;
+				continue;
+			}
+			
+			/*
+			 * Proceed if a packet successfully received,
+			 * load the data buffer into frame buffer.
+			 */
+			try{
+            	System.arraycopy(receivePacket.getData(), 0, recvFrame, PACKET_SIZE*recvPacketCount, receivePacket.getLength());
+            	recvPacketCount++;
+            }catch(ArrayIndexOutOfBoundsException e){
+            	/*
+            	 * This occur when a packet somehow is lost,
+            	 * Discard the whole frame.
+            	 */
+            	recvPacketCount = 0;
+            	recvPacketError++;
+            	continue;
+            }
+			
+			if(receivePacket.getLength() != PACKET_SIZE){
+				/*
+				 * The size of the packet varies if it's the last one of the frame.
+				 */
+				if(recvPacketCount != FRAME_SIZE / PACKET_SIZE + 1){
+					/*
+					 * But maybe the packet sequence is messed up.
+					 */
+					recvPacketCount = 0;
+					recvPacketError++;
+					continue;
+				}
+				/*
+				 * As long as the code reaches here, we obtain a whole image.
+				 */
+				recvPacketCount = 0;
+				recvFrameCount++;
+				onFrameReceived(recvFrame);
+			}
 		}
 	}
 

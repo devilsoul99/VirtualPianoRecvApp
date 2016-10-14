@@ -19,7 +19,9 @@ public class UserInterface {
 	private JTextArea msgLog;
 	private JScrollPane msgPane;
 	private JButton btn;
-	private Date orgTimer;
+	private Date orgTimer,
+				 frameRateTimer;
+
 	
     public UserInterface(){
 		mainFrame = new JFrame();
@@ -34,20 +36,30 @@ public class UserInterface {
     private String getTimeElapsed(){
     	Date curTimer = new Date();
     	long elapsedMS = curTimer.getTime() - orgTimer.getTime();
-    	long min = elapsedMS/1000/60,
-    		 sec = elapsedMS/1000%60,
-    		 mSec = elapsedMS%1000;
-    	String minStr = min<10 ? "0"+Long.toString(min):Long.toString(min);
-    	String secStr = sec<10 ? "0"+Long.toString(sec):Long.toString(sec);
-    	String mSecStr;
-    	if(mSec < 10){
-    		mSecStr = "00"+Long.toString(mSec);
-    	}else if(mSec < 100){
-    		mSecStr = "0"+Long.toString(mSec);
-    	}else{
-    		mSecStr = Long.toString(mSec);
+    	
+    	int min = (int) elapsedMS/1000/60,
+    		sec = (int) elapsedMS/1000%60,
+    		mSec = (int) elapsedMS%1000;
+    	return "[" + prefixZeros(min,2) + "." + prefixZeros(sec,2) + "." + prefixZeros(mSec,3) + "]";
+    }
+    
+    private String prefixZeros(int subject, int totalDigit){
+    	String rv = Integer.toString(subject);
+    	while(rv.length()<totalDigit){
+    		rv = "0" + rv;
     	}
-    	return "[" + minStr + "." + secStr + "." + mSecStr + "]";
+    	return rv;
+    }
+    
+    private String floatDigit(float subject, int postDigit){
+    	String rv;
+    	if(!Float.isNaN(subject) && postDigit > 0){
+			rv = Float.toString(subject);
+			rv = rv.substring(0, rv.indexOf('.') + postDigit + 1);
+		}else{
+			rv = "0.0";
+		}
+    	return rv;
     }
     
  	public void loadElements(){
@@ -78,7 +90,7 @@ public class UserInterface {
 			mainFrame.add(imgLabel[i]);
 		}
 		msgLog.setEditable(false);
-		this.addLog("Runtime log:");
+		this.addLog("Start runtime log.");
 		msgPane.setSize(300,500);
 		msgPane.setLocation(975, 110);
 		mainFrame.add(msgPane);
@@ -92,11 +104,37 @@ public class UserInterface {
 	}
 	
 	public void addLog(String newLog){
-		msgLog.append(getTimeElapsed() + newLog+"\n");
+		msgLog.append(getTimeElapsed() + " " + newLog + "\n");
 		return;
 	}
 	
 	public void trafficUpdate(int pCount, int pError, int fCount){
+		/*
+		 * Update the network packet info to the txtLabel.
+		 * 	
+		 */
+		float frameLossRate = (float)pError/(float)fCount*100;
+
+		txtLabel[0].setText("Packet sequence: " + pCount);
+		txtLabel[1].setText("Packet receive error: " + pError);
+		txtLabel[2].setText("Frame count: " + fCount);
+		txtLabel[3].setText("Frame loss rate: " + floatDigit(frameLossRate,1) + "%");
+		return;
+	}
+	
+	public void frameRateUpdate(){
+		/*
+		 * This function will be called when a complete frame is received.
+		 */
+		if(frameRateTimer==null){
+			frameRateTimer = new Date();
+			return;
+		}
+		Date currentTimer = new Date();
+		int frameDelayMsec = (int) (currentTimer.getTime() - frameRateTimer.getTime());
+		float instantFrameRate = (float)1 / ((float)frameDelayMsec / (float) 1000);
+		txtLabel[4].setText("Frame rate (FPS): " + floatDigit(instantFrameRate,1));
+		frameRateTimer.setTime(currentTimer.getTime());;
 		return;
 	}
 	
