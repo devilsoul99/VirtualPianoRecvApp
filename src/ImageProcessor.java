@@ -1,16 +1,26 @@
+import java.awt.Color;
+import java.awt.image.BufferedImage;
 
 public class ImageProcessor {
 	/*
 	 * Constant declaration
 	 */
 	private final int IMAGE_WIDTH = 480,
-					  IMAGE_HEIGHT = 320;
+					  IMAGE_HEIGHT = 320,
+					  IMAGE_BUFFER_COUNT = 5;
 	/*
 	 * Variable declarations
 	 */
-	private int[] orgImageRGB = new int[IMAGE_WIDTH * IMAGE_HEIGHT * 3];
+	private BufferedImage[] images = new BufferedImage[IMAGE_BUFFER_COUNT];
 	
-	private boolean YV12ToRGB24(byte[] pYUV,int[] pRGB24,int width,int height){
+	public ImageProcessor(){
+		/*
+		 * Allocates BufferedImage: 0 -> original image
+		 */
+		images[0] = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
+	}
+	
+  	private boolean YV12ToRGB24(byte[] pYUV,int[] pRGB24,int width,int height){
 		
 	    if (width < 1 || height < 1 || pYUV == null || pRGB24 == null){
 	    	return false;
@@ -45,7 +55,36 @@ public class ImageProcessor {
 	    return true;
 	}
 
+  	public BufferedImage getImage(int seq){
+  		if(seq >= 0 && seq < images.length){
+  			
+  			return images[seq];
+  		}
+  		return null;
+  	}
+  	
+  	public int getImageBufferCount(){
+  		return IMAGE_BUFFER_COUNT;
+  	}
+  	
 	public boolean importFrame(byte[] frameData){
-		return YV12ToRGB24(frameData,orgImageRGB,IMAGE_WIDTH,IMAGE_HEIGHT);
+		/*
+		 * Convert the frame data from YV12 to RGB form,
+		 * then store it into BufferedImage.
+		 */
+		int[] orgImageRGB = new int[IMAGE_WIDTH * IMAGE_HEIGHT * 3];
+		if(YV12ToRGB24(frameData,orgImageRGB,IMAGE_WIDTH,IMAGE_HEIGHT)){
+			
+			for(int i = 0; i < orgImageRGB.length; i += 3){
+				/*
+				 * For each pixel's RGB, copy to original BufferedImage.
+				 */
+				int orgImageColor = new Color(orgImageRGB[i],orgImageRGB[i+1],orgImageRGB[i+2]).getRGB();
+				images[0].setRGB((i/3)%480, (i/3)/480,orgImageColor);
+			}
+			
+			return true;
+		}
+		return false;
 	}
 }

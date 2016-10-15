@@ -82,6 +82,12 @@ public class VirtualPianoRecv {
 			GUI.addLog("Failed to convert YV12 image on frame " + frameSeq + ".");
 			return;
 		}
+		/*
+		 * Show every result to the GUI.
+		 */
+		for(int i = 0; i < GPU.getImageBufferCount(); i++){
+			GUI.showImage(GPU.getImage(i), i);
+		}
 		return;
 	}
 	
@@ -107,11 +113,13 @@ public class VirtualPianoRecv {
 		DatagramSocket serverSocket = createSocket();
 		if(isServerSocketCreated){
 			selfAddressDetect(serverSocket);
+			GUI.addLog("Start Listening.");
 		}
 		/*
-		 * Ready to receive data from mobile device.
+		 * Ready to receive data from mobile device,
+		 * Instantiate a ImageProcessor.
 		 */
-		GUI.addLog("Start Listening.");
+		GPU = new ImageProcessor();
 		
 		while(isServerSocketCreated){
 			GUI.trafficUpdate(recvPacketCount,recvPacketError,recvFrameCount);

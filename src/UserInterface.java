@@ -1,4 +1,5 @@
 import javax.swing.*;
+import java.awt.image.BufferedImage;
 import java.util.*;
 
 public class UserInterface {
@@ -135,6 +136,13 @@ public class UserInterface {
 		float instantFrameRate = (float)1 / ((float)frameDelayMsec / (float) 1000);
 		txtLabel[4].setText("Frame rate (FPS): " + floatDigit(instantFrameRate,1));
 		frameRateTimer.setTime(currentTimer.getTime());;
+		return;
+	}
+	
+	public void showImage(BufferedImage subject, int position){
+		if(position >= 0 && position < imgLabel.length && subject != null){
+			imgLabel[position].setIcon(new ImageIcon(subject));
+		}
 		return;
 	}
 	
