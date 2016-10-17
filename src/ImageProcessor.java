@@ -1,5 +1,7 @@
 import java.awt.Color;
+import java.awt.Graphics;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorConvertOp;
 
 public class ImageProcessor {
 	/*
@@ -12,12 +14,42 @@ public class ImageProcessor {
 	 * Variable declarations
 	 */
 	private BufferedImage[] images = new BufferedImage[IMAGE_BUFFER_COUNT];
+	private boolean isBaseLocked = false;
 	
 	public ImageProcessor(){
 		/*
 		 * Allocates BufferedImage: 0 -> original image
+		 * 							1 -> gray scale
+		 * 							2 -> tag result
+		 * 							3 -> tip process
+		 * 							5 -> base image (in gray scale)
 		 */
 		images[0] = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
+		images[1] = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_BYTE_GRAY);
+		images[2] = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
+		images[3] = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
+		images[4] = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
+	}
+	
+	private void getRGBArray(int color, int[] rv){
+		rv[0] = (color >> 16) & 0xFF;
+		rv[1] = (color >> 8 ) & 0xFF;
+		rv[2] = color & 0xFF;
+		return;
+	}
+	
+	private int getPixelColor(int subIndex, int x, int y){
+		return images[subIndex].getRGB(x, y);
+	}
+	
+	public void deepCopy(int src, int dest){
+		/*
+		 *  Convert the original colored image to gray scale.
+		 */
+		Graphics g = images[dest].getGraphics();
+		g.drawImage(images[src], 0, 0, null);
+		g.dispose();
+		return;
 	}
 	
   	private boolean YV12ToRGB24(byte[] pYUV,int[] pRGB24,int width,int height){
@@ -57,7 +89,6 @@ public class ImageProcessor {
 
   	public BufferedImage getImage(int seq){
   		if(seq >= 0 && seq < images.length){
-  			
   			return images[seq];
   		}
   		return null;
