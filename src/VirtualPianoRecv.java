@@ -96,6 +96,20 @@ public class VirtualPianoRecv {
 		return;
 	}
 	
+	public static class ButtonListener implements ActionListener{
+		public void actionPerformed(ActionEvent obj) {
+			if(!isServerSocketCreated){
+				GUI.addLog("Command ignored, server socket not created.");
+				return;
+			}
+			String command = obj.getActionCommand();
+			if(command.equals("Base Lock")){
+				GPU.baseLock();
+			}
+			
+		}
+	}
+	
 	public static void main(String[] args) {
 		/*
 		 * Local Variable declarations
@@ -104,6 +118,7 @@ public class VirtualPianoRecv {
 		    recvPacketError = 0,
 		    recvFrameCount = 0;
 		byte[] recvFrame = new byte[FRAME_SIZE];
+		ButtonListener listener = new ButtonListener();
 		/*
 		 * First, we create a GUI for the user using another implemented class,
 		 * It will handle all the output functions.
@@ -111,6 +126,7 @@ public class VirtualPianoRecv {
 		GUI = new UserInterface();
 		GUI.loadElements();
 		GUI.setMainVisible(true);
+		GUI.importListener(listener);
 		/*
 		 * Initializing socket, then obtain the local IP and port,
 		 * this step is required for android application settings.

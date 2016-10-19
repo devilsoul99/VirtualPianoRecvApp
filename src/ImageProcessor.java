@@ -1,7 +1,6 @@
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorConvertOp;
 
 public class ImageProcessor {
 	/*
@@ -50,6 +49,14 @@ public class ImageProcessor {
 		g.drawImage(images[src], 0, 0, null);
 		g.dispose();
 		return;
+	}
+	
+	public boolean baseLock(){
+		/*
+		 * Base Lock process started, first we find the sign point by RGB.
+		 */
+		System.out.println("AAA");
+		return true;
 	}
 	
   	private boolean YV12ToRGB24(byte[] pYUV,int[] pRGB24,int width,int height){

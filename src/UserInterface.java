@@ -1,4 +1,6 @@
 import javax.swing.*;
+
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.util.*;
 
@@ -33,6 +35,11 @@ public class UserInterface {
 		mainFrame.setResizable(false);
 		orgTimer = new Date();
 	}
+    
+    public void importListener(ActionListener l){
+    	btn.addActionListener(l);
+    	return;
+    }
 	
     private String getTimeElapsed(){
     	Date curTimer = new Date();
