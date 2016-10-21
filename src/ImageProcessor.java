@@ -9,6 +9,7 @@ public class ImageProcessor {
 	private final int IMAGE_WIDTH = 480,
 					  IMAGE_HEIGHT = 320,
 					  IMAGE_BUFFER_COUNT = 5;
+	
 	/*
 	 * Variable declarations
 	 */
@@ -51,6 +52,7 @@ public class ImageProcessor {
 		Graphics g = images[dest].getGraphics();
 		g.drawImage(images[src], 0, 0, null);
 		g.dispose();
+		System.out.println("TEST");
 		return;
 	}
 	
