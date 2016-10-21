@@ -20,6 +20,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.*;
 import sun.audio.*;
 
 public class VirtualPianoRecv {
@@ -78,6 +79,7 @@ public class VirtualPianoRecv {
 		 * new frame of image, we import it to the ImageProcessor class.
 		 */
 		GUI.frameRateUpdate();
+		Date framePreocessTimeStart = new Date();				
 		
 		if(!GPU.importFrame(frame)){
 			GUI.addLog("Failed to convert YV12 image on frame " + frameSeq + ".");
@@ -87,6 +89,11 @@ public class VirtualPianoRecv {
 		 * After the original image, we do a gray scale conversion for later use.
 		 */
 		GPU.deepCopy(0, 1);
+		
+		Date framePreocessTimeFin = new Date();
+		System.out.println("Processing time: " + (framePreocessTimeFin.getTime()-framePreocessTimeStart.getTime()));
+		
+		
 		/*
 		 * Show every result to the GUI.
 		 */

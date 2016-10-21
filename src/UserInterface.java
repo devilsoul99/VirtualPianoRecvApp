@@ -121,7 +121,7 @@ public class UserInterface {
 		 * Update the network packet info to the txtLabel.
 		 * 	
 		 */
-		float frameLossRate = (float)pError/(float)fCount*100;
+		float frameLossRate = (float)pError/(float)(fCount+pError)*100;
 
 		txtLabel[0].setText("Packet sequence: " + pCount);
 		txtLabel[1].setText("Packet receive error: " + pError);
