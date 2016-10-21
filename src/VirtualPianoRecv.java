@@ -4,24 +4,15 @@
  */
 
 // Import libraries
-import java.awt.Color;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.WritableRaster;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.*;
-import sun.audio.*;
 
 public class VirtualPianoRecv {
 	/*
@@ -90,10 +81,12 @@ public class VirtualPianoRecv {
 		 */
 		GPU.deepCopy(0, 1);
 		
+		
+		/*
+		 * Update image processing time in millisecond.
+		 */
 		Date framePreocessTimeFin = new Date();
-		System.out.println("Processing time: " + (framePreocessTimeFin.getTime()-framePreocessTimeStart.getTime()));
-		
-		
+		GUI.processTimeUpdate((framePreocessTimeFin.getTime()-framePreocessTimeStart.getTime()));
 		/*
 		 * Show every result to the GUI.
 		 */
@@ -111,7 +104,11 @@ public class VirtualPianoRecv {
 			}
 			String command = obj.getActionCommand();
 			if(command.equals("Base Lock")){
-				GPU.baseLock();
+				if(GPU.baseLock()){
+					GUI.addLog("Base lock complete, start to detect motion.");
+				}else{
+					GUI.addLog("Base lock failed, adjust the picture or camera then retry.");
+				}
 			}
 			
 		}

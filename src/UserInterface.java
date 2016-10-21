@@ -9,7 +9,7 @@ public class UserInterface {
 	/*
 	 *  Constant declarations
 	 */
-	private final int	WINDOW_WIDTH = 1285,
+	private final int	WINDOW_WIDTH = 1385,
 						WINDOW_HEIGHT = 800;
 	private final String APP_TITLE = "Virtual Piano PC Client";
 	
@@ -74,7 +74,7 @@ public class UserInterface {
 		/*
 		 * Declaring all the elements
 		 */
-		txtLabel = new JLabel[5];
+		txtLabel = new JLabel[6];
 		imgLabel = new JLabel[4];
 		msgLog = new JTextArea();
 		msgPane = new JScrollPane(msgLog);
@@ -87,7 +87,7 @@ public class UserInterface {
 		 */
 		for(int i = 0; i < txtLabel.length; i++){
 			txtLabel[i] = new JLabel();
-			txtLabel[i].setSize(300, 20);
+			txtLabel[i].setSize(400, 20);
 			txtLabel[i].setLocation(975, 5+(20*i));
 			mainFrame.add(txtLabel[i]);
 		}
@@ -99,13 +99,13 @@ public class UserInterface {
 		}
 		msgLog.setEditable(false);
 		this.addLog("Start runtime log.");
-		msgPane.setSize(300,500);
-		msgPane.setLocation(975, 110);
+		msgPane.setSize(400,500);
+		msgPane.setLocation(975, 130);
 		mainFrame.add(msgPane);
 		
 		btn.setText("Base Lock");
 		btn.setSize(150,50);
-		btn.setLocation(975, 615);
+		btn.setLocation(975, 635);
 		mainFrame.add(btn);
 		
 		return;
@@ -113,6 +113,11 @@ public class UserInterface {
 	
 	public void addLog(String newLog){
 		msgLog.append(getTimeElapsed() + " " + newLog + "\n");
+		return;
+	}
+	
+	public void processTimeUpdate(long pMS){
+		txtLabel[5].setText("Processing time: " + pMS + " ms");
 		return;
 	}
 	
