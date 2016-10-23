@@ -1,7 +1,14 @@
 import javax.swing.*;
 
+import sun.audio.AudioPlayer;
+import sun.audio.AudioStream;
+
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
 public class UserInterface {
@@ -12,7 +19,6 @@ public class UserInterface {
 	private final int	WINDOW_WIDTH = 1385,
 						WINDOW_HEIGHT = 800;
 	private final String APP_TITLE = "Virtual Piano PC Client";
-	
 	/*
 	 *  Variable declarations
 	 */
@@ -113,6 +119,7 @@ public class UserInterface {
 	
 	public void addLog(String newLog){
 		msgLog.append(getTimeElapsed() + " " + newLog + "\n");
+		msgLog.setCaretPosition(msgLog.getDocument().getLength()); 
 		return;
 	}
 	
@@ -160,6 +167,21 @@ public class UserInterface {
 	
 	public void setMainVisible(boolean v){
 		mainFrame.setVisible(v);
+		return;
+	}
+
+	public void playSound(String keyIndex){
+		InputStream in;
+		AudioStream audioStream = null;
+		try {
+			in = new FileInputStream("soundbank\\Piano" + keyIndex + ".wav");
+			audioStream = new AudioStream(in);
+			AudioPlayer.player.start(audioStream);
+		} catch (FileNotFoundException e) {
+			addLog("Sound bank not found, index: " + keyIndex);
+		} catch (IOException e) {
+			addLog("IO Exception while playing, index: " + keyIndex);
+		}
 		return;
 	}
 }

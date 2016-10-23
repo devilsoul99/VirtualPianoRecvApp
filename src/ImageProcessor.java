@@ -19,11 +19,21 @@ public class ImageProcessor {
 	 * Threshold declarations
 	 */
 	private int th_mark_redMinValue = 120,
-				th_mark_redMaxOut = 50,
-				th_mark_greenMinValue = 100,
-				th_mark_greenMaxOut = 40,
-				th_mark_blueMinValue = 100,
-				th_mark_blueMaxOut = 40;
+				th_mark_redMaxOutGreen = 50,
+				th_mark_redMaxOutBlue = 50,
+				th_mark_greenMinValue = 60,
+				th_mark_greenMaxOutRed = 25,
+				th_mark_greenMaxOutBlue = 0,
+				th_mark_blueMinValue = 55,
+				th_mark_blueMaxOutRed = 30,
+				th_mark_blueMaxOutGreen = 0,
+				th_ls_grayVariation = 30,
+				th_ls_whiteToBlue = 180,
+				th_ls_blueToBlack = 25,
+				th_tip_aboveLineLenth = 30,
+				th_press_rectWidth = 100,
+				th_press_rectHeight = 100;
+	private double th_press_shadowPercentage = 2.5;
 	/*
 	 * Variable declarations
 	 */
@@ -36,6 +46,7 @@ public class ImageProcessor {
 				labelNumberGreen,
 				labelNumberBlue;
 	private boolean isBaseLocked = false;
+	private boolean[] iskeyPlaying = new boolean[EX_KEY_COUNT * 2];
 	
 	public ImageProcessor(){
 		/*
@@ -101,6 +112,7 @@ public class ImageProcessor {
 	    		}
 	    	}
 		}
+		keyReset();
 	}
 	
 	private void copyBorderLabel(int[][] labelTag,int x,int y,int color,int ox,int oy){
@@ -144,19 +156,19 @@ public class ImageProcessor {
 			return;
 		}
 		if(markedColor == Color.RED.getRGB()){
-			labelTag[x][y] = labelNumberRed++;
+			labelTag[x][y] = labelNumberRed;
 			if(labelNumberRed < 9){
-				redMark[labelNumberRed] = new Point(x,y);
+				redMark[labelNumberRed++] = new Point(x,y);
 			}
 		}else if(markedColor == Color.GREEN.getRGB()){
-			labelTag[x][y] = labelNumberGreen++;
+			labelTag[x][y] = labelNumberGreen;
 			if(labelNumberGreen < 9){
-				greenMark[labelNumberGreen] = new Point(x,y);
+				greenMark[labelNumberGreen++] = new Point(x,y);
 			}
 		}else if(markedColor==Color.BLUE.getRGB()){
-			labelTag[x][y] = labelNumberBlue++;
+			labelTag[x][y] = labelNumberBlue;
 			if(labelNumberBlue < 2){
-				blueMark[labelNumberBlue] = new Point(x,y);
+				blueMark[labelNumberBlue++] = new Point(x,y);
 			}
 		}
 		for(int i = x - 1; i <= x + 1; i++){
@@ -182,11 +194,11 @@ public class ImageProcessor {
     			/*
     			 * Threshold analyzing.
     			 */
-    			if(pixelRGB[0] > th_mark_redMinValue && pixelRGB[0] - pixelRGB[1] > th_mark_redMaxOut && pixelRGB[0] - pixelRGB[2] > th_mark_redMaxOut){
+    			if(pixelRGB[0] > th_mark_redMinValue && pixelRGB[0] - pixelRGB[1] > th_mark_redMaxOutGreen && pixelRGB[0] - pixelRGB[2] > th_mark_redMaxOutBlue){
     				images[2].setRGB(x, y, Color.RED.getRGB());
-    			}else if(pixelRGB[1] > th_mark_greenMinValue && pixelRGB[1] - pixelRGB[2] > th_mark_greenMaxOut && pixelRGB[1] - pixelRGB[0] > th_mark_greenMaxOut){
+    			}else if(pixelRGB[1] > th_mark_greenMinValue && pixelRGB[1] - pixelRGB[2] > th_mark_greenMaxOutBlue && pixelRGB[1] - pixelRGB[0] > th_mark_greenMaxOutRed){
     				images[2].setRGB(x, y, Color.GREEN.getRGB());
-    			}else if(pixelRGB[2] > th_mark_blueMinValue && pixelRGB[2] - pixelRGB[0] > th_mark_blueMaxOut && pixelRGB[2] - pixelRGB[1] > th_mark_blueMaxOut){
+    			}else if(pixelRGB[2] > th_mark_blueMinValue && pixelRGB[2] - pixelRGB[0] > th_mark_blueMaxOutRed && pixelRGB[2] - pixelRGB[1] > th_mark_blueMaxOutGreen){
     				images[2].setRGB(x, y, Color.BLUE.getRGB());
     			}
     		}
@@ -255,6 +267,133 @@ public class ImageProcessor {
 		return isBaseLocked;
 	}
 
+	private void layerSeparation(){
+		for(int x = 0; x < IMAGE_WIDTH; x++){
+    		for(int y = 0; y < IMAGE_HEIGHT; y++){
+    			int basePixelGray = getPixelRGB(4, x, y)[2];
+    			int currentPixelGray = getPixelRGB(1, x, y)[2];
+    			if(Math.abs(basePixelGray - currentPixelGray) > th_ls_grayVariation){
+    				if(currentPixelGray < th_ls_blueToBlack){
+    					images[3].setRGB(x, y, 0);
+    				}else if(currentPixelGray < th_ls_whiteToBlue){
+    					images[3].setRGB(x, y, 255);
+    				}else{
+    					images[3].setRGB(x, y, Color.WHITE.getRGB());
+    				}
+    			}else{
+    				images[3].setRGB(x, y, Color.WHITE.getRGB());
+    			}
+    		}
+    	}
+	}
+	
+	private void drawCross(Point intersectiion, int color){
+		int interX = (int)intersectiion.getX();
+		int interY = (int)intersectiion.getY();
+		for(int y = 0; y < IMAGE_HEIGHT; y++){
+			images[3].setRGB(interX, y, color);
+		}
+		for(int x = 0; x < IMAGE_WIDTH; x++){
+			images[3].setRGB(x, interY, color);
+		}
+		return;
+	}
+	
+	private Point findTip(){
+		/*
+		 * Find the tip locate on image 3
+		 * 1. The pixel itself is black
+		 * 2. The pixel below it is not black
+		 * 3. 5 pixels above is all black
+		 */
+		for(int y = IMAGE_HEIGHT - 1; y >= 0; y--){
+			for(int x = 0; x < IMAGE_WIDTH; x++){
+				if(images[3].getRGB(x, y) == Color.BLACK.getRGB()){
+					if(y + 1 < IMAGE_HEIGHT && images[3].getRGB(x, y + 1) != 0){
+						if(y >= th_tip_aboveLineLenth){
+							boolean isLineBlack = true;
+							for(int i = 0; i <= th_tip_aboveLineLenth; i++){
+								if(images[3].getRGB(x, y - i) != Color.BLACK.getRGB()){
+									isLineBlack = false;
+									break;
+								}
+							}
+							if(isLineBlack){
+								return new Point(x, y);
+							}
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	private void keyReset(){
+		for(int i = 0; i < iskeyPlaying.length; i++){
+			iskeyPlaying[i] = false;
+		}
+		return;
+	}
+	
+	private String tipKey(Point tip){
+		int onTipKey = keyArea[(int)tip.getX()][(int)tip.getY()];
+		if(onTipKey != -1){
+			boolean isBlackKeys = tip.getY() > blueMark[0].getY() && onTipKey != 5 && onTipKey != 1 && onTipKey != 0;
+			int keyIndex = isBlackKeys? (EX_KEY_COUNT - onTipKey - 1) * 2 + 1: (EX_KEY_COUNT - onTipKey - 1) * 2;
+			if(!iskeyPlaying[keyIndex]){
+				keyReset();
+				iskeyPlaying[keyIndex] = true;
+				return Integer.toString(keyIndex);
+			}
+			return "PRESSED_IS_PLAYING";
+		}
+		return "TIP_NOT_ON_KEY";
+	}
+	
+	private boolean isPressed(Point tip){
+		int calculatedPixelCount = 0;
+		int calculatedshadowCount = 0;
+		for(int x = ((int)tip.getX() - (th_press_rectWidth/2)); x < ((int)tip.getX() + (th_press_rectWidth/2)); x++){
+    		for(int y = (int)tip.getY(); y < (int)tip.getY() + th_press_rectHeight; y++){
+    			if(x < 0 || x >= IMAGE_WIDTH || y < 0 || y >= IMAGE_HEIGHT){
+    				continue;
+    			}else{
+    				calculatedPixelCount++;
+    				if(images[3].getRGB(x, y) == Color.BLUE.getRGB()){
+    					calculatedshadowCount++;
+    				}
+    			}
+    		}
+    	}
+		double shadowPercentage = (double)calculatedshadowCount / (double)calculatedPixelCount * 100;
+		if(shadowPercentage < th_press_shadowPercentage){
+			return true;
+		}
+		keyReset();
+		return false;
+	}
+	
+	public String detectMotion(){
+		if(!isBaseLocked){
+			return "NOT_BASE_LOCKED";
+		}
+		/*
+		 * Separates the shadow and the hand from background.
+		 */
+		layerSeparation();
+		Point tipPoint = findTip();
+		if(tipPoint != null){
+			drawCross(tipPoint,Color.RED.getRGB());
+			if(isPressed(tipPoint)){
+				return tipKey(tipPoint);
+			}else{
+				return "NOT PRESSED";
+			}
+		}
+		return "TIP_NOT_FOUND";
+	}
+	
   	private boolean YV12ToRGB24(byte[] pYUV,int[] pRGB24,int width,int height){
 		
 	    if (width < 1 || height < 1 || pYUV == null || pRGB24 == null){

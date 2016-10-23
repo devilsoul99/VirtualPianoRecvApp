@@ -26,6 +26,7 @@ public class VirtualPianoRecv {
 	private static final int DEFAULT_PORT = 55835,
 							 FRAME_SIZE = 230400,
 							 PACKET_SIZE = 1000;
+	private static final boolean debugMode = false;
 	/*
 	 * Global variable declarations
 	 */
@@ -64,6 +65,41 @@ public class VirtualPianoRecv {
 		return;
 	}
 	
+	private static void motionHandler(String m){
+		if(m.equals("NOT_BASE_LOCKED")){
+			if(debugMode){
+				GUI.addLog("Base lock process not completed.");
+				return;
+			}
+		}else if(m.equals("TIP_NOT_FOUND")){
+			if(debugMode){
+				GUI.addLog("Cannot find a tip point on image.");
+				return;
+			}
+		}else if(m.equals("TIP_NOT_ON_KEY")){
+			if(debugMode){
+				GUI.addLog("Found a tip point but not on a key.");
+				return;
+			}
+		}else if(m.equals("NOT PRESSED")){
+			if(debugMode){
+				GUI.addLog("Found a tip point but it is not pressed.");
+				return;
+			}
+		}else if(m.equals("PRESSED_IS_PLAYING")){
+			if(debugMode){
+				GUI.addLog("The pressing key is now playing in progress.");
+				return;
+			}
+		}else{
+			if(debugMode){
+				GUI.addLog("Pressed Key: " + m);
+			}
+			GUI.playSound(m);
+			return;
+		}
+	}
+	
 	private static void onFrameReceived(byte[] frame, int frameSeq){
 		/*
 		 * This function is called every time when program received a
@@ -80,8 +116,17 @@ public class VirtualPianoRecv {
 		 * After the original image, we do a gray scale conversion for later use.
 		 */
 		GPU.deepCopy(0, 1);
-		
-		
+		/*
+		 * Call GPU to detect motion if base lock process is finished,
+		 * the function return the following:
+		 * 		NOT_BASE_LOCKED		-> The base lock process is not completed.
+		 * 		TIP_NOT_FOUND		-> Cannot find a tip point on image 3.
+		 * 		TIP_NOT_ON_KEY		-> Found a tip point but not on a key.
+		 * 		NOT PRESSED			-> Found a tip point but it is not pressed.
+		 * 		PRESSED_IS_PLAYING	-> The pressing key is now playing in progress.
+		 * 		...					-> else, it return a string which is the key index.
+		 */
+		motionHandler(GPU.detectMotion());
 		/*
 		 * Update image processing time in millisecond.
 		 */
