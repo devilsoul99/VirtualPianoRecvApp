@@ -18,21 +18,22 @@ public class ImageProcessor {
 	/*
 	 * Threshold declarations
 	 */
-	private int th_mark_redMinValue = 120,
-				th_mark_redMaxOutGreen = 50,
-				th_mark_redMaxOutBlue = 50,
-				th_mark_greenMinValue = 60,
-				th_mark_greenMaxOutRed = 25,
-				th_mark_greenMaxOutBlue = 0,
-				th_mark_blueMinValue = 55,
-				th_mark_blueMaxOutRed = 30,
-				th_mark_blueMaxOutGreen = 0,
-				th_ls_grayVariation = 30,
+	private int th_mark_redMinDegree = 320,
+				th_mark_redMaxDegree = 40,
+				th_mark_greenMinDegree = 80,
+				th_mark_greenMaxDegree = 160,
+				th_mark_blueMinDegree = 220,
+				th_mark_blueMaxDegree = 300,
+				th_ls_grayVariation = 25,
 				th_ls_whiteToBlue = 180,
 				th_ls_blueToBlack = 25,
 				th_tip_aboveLineLenth = 30,
 				th_press_rectWidth = 100,
 				th_press_rectHeight = 100;
+	private float th_mark_minS = (float) 0.25,
+				  th_mark_minB = (float) 0.25,
+				  th_ls_B1 = (float) 0.15,
+				  th_ls_B2 = (float) 1;
 	private double th_press_shadowPercentage = 2.5;
 	/*
 	 * Variable declarations
@@ -158,18 +159,21 @@ public class ImageProcessor {
 		if(markedColor == Color.RED.getRGB()){
 			labelTag[x][y] = labelNumberRed;
 			if(labelNumberRed < 9){
-				redMark[labelNumberRed++] = new Point(x,y);
+				redMark[labelNumberRed] = new Point(x,y);
 			}
+			labelNumberRed++;
 		}else if(markedColor == Color.GREEN.getRGB()){
 			labelTag[x][y] = labelNumberGreen;
 			if(labelNumberGreen < 9){
-				greenMark[labelNumberGreen++] = new Point(x,y);
+				greenMark[labelNumberGreen] = new Point(x,y);
 			}
+			labelNumberGreen++;			
 		}else if(markedColor==Color.BLUE.getRGB()){
 			labelTag[x][y] = labelNumberBlue;
 			if(labelNumberBlue < 2){
-				blueMark[labelNumberBlue++] = new Point(x,y);
+				blueMark[labelNumberBlue] = new Point(x,y);
 			}
+			labelNumberBlue++;
 		}
 		for(int i = x - 1; i <= x + 1; i++){
 			for(int j = y - 1; j <= y + 1; j++){
@@ -186,23 +190,29 @@ public class ImageProcessor {
 		deepCopy(1, 2);
 		deepCopy(2, 4);
 		/*
-		 * Find mark point in tag result image by RGB vector.
+		 * Find mark point in tag result image by using HSV vector.
 		 */
+		float redMinH = (float)th_mark_redMinDegree / (float)360 ;
+		float redMaxH = (float)th_mark_redMaxDegree / (float)360 ;
+		float greenMinH = (float)th_mark_greenMinDegree / (float)360 ;
+		float greenMaxH = (float)th_mark_greenMaxDegree / (float)360 ;
+		float blueMinH = (float)th_mark_blueMinDegree / (float)360 ;
+		float blueMaxH = (float)th_mark_blueMaxDegree / (float)360 ;
 		for(int x = 0; x < IMAGE_WIDTH; x++){
     		for(int y = 0; y < IMAGE_HEIGHT; y++){
     			int[] pixelRGB = getPixelRGB(0, x, y);
-    			/*
-    			 * Threshold analyzing.
-    			 */
-    			if(pixelRGB[0] > th_mark_redMinValue && pixelRGB[0] - pixelRGB[1] > th_mark_redMaxOutGreen && pixelRGB[0] - pixelRGB[2] > th_mark_redMaxOutBlue){
+    			float[] pixelHSB = new float[3];
+    			Color.RGBtoHSB(pixelRGB[0], pixelRGB[1], pixelRGB[2], pixelHSB);
+    			if((pixelHSB[0] >= redMinH || pixelHSB[0] <= redMaxH) && pixelHSB[1] >= th_mark_minS && pixelHSB[2] >= th_mark_minB){
     				images[2].setRGB(x, y, Color.RED.getRGB());
-    			}else if(pixelRGB[1] > th_mark_greenMinValue && pixelRGB[1] - pixelRGB[2] > th_mark_greenMaxOutBlue && pixelRGB[1] - pixelRGB[0] > th_mark_greenMaxOutRed){
+    			}else if((pixelHSB[0] >= greenMinH && pixelHSB[0] <= greenMaxH) && pixelHSB[1] >= th_mark_minS && pixelHSB[2] >= th_mark_minB){
     				images[2].setRGB(x, y, Color.GREEN.getRGB());
-    			}else if(pixelRGB[2] > th_mark_blueMinValue && pixelRGB[2] - pixelRGB[0] > th_mark_blueMaxOutRed && pixelRGB[2] - pixelRGB[1] > th_mark_blueMaxOutGreen){
+    			}else if((pixelHSB[0] >= blueMinH && pixelHSB[0] <= blueMaxH) && pixelHSB[1] >= th_mark_minS && pixelHSB[2] >= th_mark_minB){
     				images[2].setRGB(x, y, Color.BLUE.getRGB());
     			}
     		}
     	}
+		
 		/*
 		 * Noise elimination, needed to optimize the labeling process.
 		 */
@@ -268,6 +278,29 @@ public class ImageProcessor {
 	}
 
 	private void layerSeparation(){
+		for(int x = 0; x < IMAGE_WIDTH; x++){
+    		for(int y = 0; y < IMAGE_HEIGHT; y++){
+    			int basePixelGray = getPixelRGB(4, x, y)[2];
+    			int currentPixelGray = getPixelRGB(1, x, y)[2];
+    			if(Math.abs(basePixelGray - currentPixelGray) > th_ls_grayVariation){
+    				int[] pixelRGB = getPixelRGB(0, x, y);
+        			float[] pixelHSB = new float[3];
+        			Color.RGBtoHSB(pixelRGB[0], pixelRGB[1], pixelRGB[2], pixelHSB);
+        			if(pixelHSB[2] <= th_ls_B1){
+        				images[3].setRGB(x, y, Color.BLACK.getRGB());
+        			}else if(pixelHSB[2] <= th_ls_B2){
+        				images[3].setRGB(x, y, Color.BLUE.getRGB());
+        			}else{
+        				images[3].setRGB(x, y, Color.WHITE.getRGB());
+        			}   				
+    			}else{
+    				images[3].setRGB(x, y, Color.WHITE.getRGB());
+    			}
+    		}
+    	}
+	}
+	
+	private void layerSeparation2(){
 		for(int x = 0; x < IMAGE_WIDTH; x++){
     		for(int y = 0; y < IMAGE_HEIGHT; y++){
     			int basePixelGray = getPixelRGB(4, x, y)[2];
