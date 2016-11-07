@@ -154,6 +154,12 @@ public class VirtualPianoRecv {
 				}else{
 					GUI.addLog("Base lock failed, adjust the picture or camera then retry.");
 				}
+			}else if(command.equals("White Balance Switch")){
+				if(GPU.switchWhiteBalance()){
+					GUI.addLog("White balance ON");
+				}else{
+					GUI.addLog("White balance OFF");
+				}
 			}
 			
 		}

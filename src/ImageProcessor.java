@@ -24,17 +24,16 @@ public class ImageProcessor {
 				th_mark_greenMaxDegree = 160,
 				th_mark_blueMinDegree = 220,
 				th_mark_blueMaxDegree = 300,
-				th_ls_grayVariation = 25,
-				th_ls_whiteToBlue = 180,
-				th_ls_blueToBlack = 25,
+				th_ls_grayVariation = 18,
 				th_tip_aboveLineLenth = 30,
-				th_press_rectWidth = 100,
+				th_press_rectWidth = 200,
 				th_press_rectHeight = 100;
-	private float th_mark_minS = (float) 0.25,
+	private float th_mark_minS = (float) 0.18,
 				  th_mark_minB = (float) 0.25,
-				  th_ls_B1 = (float) 0.15,
-				  th_ls_B2 = (float) 1;
+				  th_ls_B1 = (float) 0.2,
+				  th_ls_B2 = (float) 0.7;
 	private double th_press_shadowPercentage = 2.5;
+	
 	/*
 	 * Variable declarations
 	 */
@@ -46,7 +45,8 @@ public class ImageProcessor {
 	private int labelNumberRed,
 				labelNumberGreen,
 				labelNumberBlue;
-	private boolean isBaseLocked = false;
+	private boolean isBaseLocked = false,
+					isWhiteBalanceOn = false;
 	private boolean[] iskeyPlaying = new boolean[EX_KEY_COUNT * 2];
 	
 	public ImageProcessor(){
@@ -277,7 +277,24 @@ public class ImageProcessor {
 		return isBaseLocked;
 	}
 
+	private float avgBrightness(){
+		float avgB = (float) 0;
+		for(int x = 0; x < IMAGE_WIDTH; x++){
+    		for(int y = 0; y < IMAGE_HEIGHT; y++){
+    			float[] pixelHSB = new float[3];
+    			int[] pixelRGB = getPixelRGB(0, x, y);
+    			Color.RGBtoHSB(pixelRGB[0], pixelRGB[1], pixelRGB[2], pixelHSB);
+    			avgB += pixelHSB[2];
+    		}
+		}
+		return avgB / (IMAGE_HEIGHT * IMAGE_WIDTH);
+	}
+	
 	private void layerSeparation(){
+		float avgB = avgBrightness();
+		System.out.println(avgB);
+		th_ls_B1 = (float) (avgB * 0.3);
+		th_ls_B2 = (float) (avgB * 1.5);
 		for(int x = 0; x < IMAGE_WIDTH; x++){
     		for(int y = 0; y < IMAGE_HEIGHT; y++){
     			int basePixelGray = getPixelRGB(4, x, y)[2];
@@ -293,26 +310,6 @@ public class ImageProcessor {
         			}else{
         				images[3].setRGB(x, y, Color.WHITE.getRGB());
         			}   				
-    			}else{
-    				images[3].setRGB(x, y, Color.WHITE.getRGB());
-    			}
-    		}
-    	}
-	}
-	
-	private void layerSeparation2(){
-		for(int x = 0; x < IMAGE_WIDTH; x++){
-    		for(int y = 0; y < IMAGE_HEIGHT; y++){
-    			int basePixelGray = getPixelRGB(4, x, y)[2];
-    			int currentPixelGray = getPixelRGB(1, x, y)[2];
-    			if(Math.abs(basePixelGray - currentPixelGray) > th_ls_grayVariation){
-    				if(currentPixelGray < th_ls_blueToBlack){
-    					images[3].setRGB(x, y, 0);
-    				}else if(currentPixelGray < th_ls_whiteToBlue){
-    					images[3].setRGB(x, y, 255);
-    				}else{
-    					images[3].setRGB(x, y, Color.WHITE.getRGB());
-    				}
     			}else{
     				images[3].setRGB(x, y, Color.WHITE.getRGB());
     			}
@@ -473,6 +470,49 @@ public class ImageProcessor {
   		return IMAGE_BUFFER_COUNT;
   	}
   	
+  	public boolean switchWhiteBalance(){
+  		isWhiteBalanceOn = !isWhiteBalanceOn;
+  		return isWhiteBalanceOn;
+  	}
+  	
+  	public void whiteBalance(){
+  		/*
+  		 * Using GWA method to white balance image.
+  		 */
+  		double avgRed = 0, avgGreen = 0, avgBlue = 0;
+  		for(int x = 0; x < IMAGE_WIDTH; x++){
+  			double colAvgRed = 0, colAvgGreen = 0, colAvgBlue = 0;
+    		for(int y = 0; y < IMAGE_HEIGHT; y++){
+    			int[] pixelRGB = getPixelRGB(0, x, y);
+    			colAvgRed += pixelRGB[0];
+    			colAvgGreen += pixelRGB[1];
+    			colAvgBlue += pixelRGB[2];
+    		}
+    		colAvgRed /= IMAGE_HEIGHT;
+    		avgRed += colAvgRed;
+    		colAvgGreen /= IMAGE_HEIGHT;
+    		avgGreen += colAvgGreen;
+    		colAvgBlue /= IMAGE_HEIGHT;
+    		avgBlue += colAvgBlue;
+    	}
+  		avgRed /= IMAGE_WIDTH;
+  		avgGreen /= IMAGE_WIDTH;
+  		avgBlue /= IMAGE_WIDTH;
+  		
+  		double Kr = avgGreen / avgRed;
+  		double Kb = avgGreen / avgBlue;
+  		for(int x = 0; x < IMAGE_WIDTH; x++){
+    		for(int y = 0; y < IMAGE_HEIGHT; y++){
+    			int[] pixelRGB = getPixelRGB(0, x, y);
+    			int newR = (int)(pixelRGB[0]*Kr) > 255 ? 255 : (int)(pixelRGB[0]*Kr);
+    			int newB = (int)(pixelRGB[2]*Kb) > 255 ? 255 : (int)(pixelRGB[2]*Kb);
+    			//System.out.println(newB);
+    			Color newColor = new Color(newR, pixelRGB[1], newB);
+    			images[0].setRGB(x, y,newColor.getRGB());
+    		}
+    	}
+  	}
+  	
 	public boolean importFrame(byte[] frameData){
 		/*
 		 * Convert the frame data from YV12 to RGB form,
@@ -488,7 +528,9 @@ public class ImageProcessor {
 				int orgImageColor = new Color(orgImageRGB[i],orgImageRGB[i+1],orgImageRGB[i+2]).getRGB();
 				images[0].setRGB((i/3)%IMAGE_WIDTH, (i/3)/IMAGE_WIDTH,orgImageColor);
 			}
-			
+			if(isWhiteBalanceOn){
+				whiteBalance();
+			}
 			return true;
 		}
 		return false;

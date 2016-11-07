@@ -27,7 +27,7 @@ public class UserInterface {
 	private JLabel[] imgLabel;
 	private JTextArea msgLog;
 	private JScrollPane msgPane;
-	private JButton btn;
+	private JButton[] btn;
 	private Date orgTimer,
 				 frameRateTimer;
 
@@ -43,7 +43,9 @@ public class UserInterface {
 	}
     
     public void importListener(ActionListener l){
-    	btn.addActionListener(l);
+    	for(int i = 0; i < btn.length; i++){
+    		btn[i].addActionListener(l);
+    	}
     	return;
     }
 	
@@ -84,8 +86,7 @@ public class UserInterface {
 		imgLabel = new JLabel[4];
 		msgLog = new JTextArea();
 		msgPane = new JScrollPane(msgLog);
-		btn = new JButton();
-		
+		btn = new JButton[2];
 		
 		/*
 		 * Adjust size and location,
@@ -109,10 +110,15 @@ public class UserInterface {
 		msgPane.setLocation(975, 130);
 		mainFrame.add(msgPane);
 		
-		btn.setText("Base Lock");
-		btn.setSize(150,50);
-		btn.setLocation(975, 635);
-		mainFrame.add(btn);
+		for(int i = 0; i < btn.length; i++){
+			btn[i] = new JButton();
+			btn[i].setSize(150,50);
+			mainFrame.add(btn[i]);
+    	}
+		btn[0].setText("Base Lock");
+		btn[0].setLocation(975, 635);
+		btn[1].setText("White Balance Switch");
+		btn[1].setLocation(1130, 635);
 		
 		return;
 	}
