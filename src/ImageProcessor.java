@@ -28,7 +28,7 @@ public class ImageProcessor {
 				th_tip_aboveLineLenth = 30,
 				th_press_rectWidth = 200,
 				th_press_rectHeight = 100;
-	private float th_mark_minS = (float) 0.18,
+	private float th_mark_minS = (float) 0.25,
 				  th_mark_minB = (float) 0.25,
 				  th_ls_B1 = (float) 0.2,
 				  th_ls_B2 = (float) 0.7;

@@ -3,7 +3,6 @@
  * then produce corresponding piano sound for output.
  */
 
-// Import libraries
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -228,19 +227,25 @@ public class VirtualPianoRecv {
             	 * This occur when a packet somehow is lost,
             	 * Discard the whole frame.
             	 */
+            	
+            	System.out.println("OutOfBound: " + recvPacketCount + ", " + receivePacket.getLength());
             	recvPacketCount = 0;
             	recvPacketError++;
             	continue;
+        	
             }
 			
 			if(receivePacket.getLength() != PACKET_SIZE){
 				/*
 				 * The size of the packet varies if it's the last one of the frame.
 				 */
+				System.out.println(recvPacketCount);
 				if(recvPacketCount != FRAME_SIZE / PACKET_SIZE + 1){
 					/*
 					 * But maybe the packet sequence is messed up.
 					 */
+					
+					System.out.println("A");
 					recvPacketCount = 0;
 					recvPacketError++;
 					continue;
@@ -248,6 +253,7 @@ public class VirtualPianoRecv {
 				/*
 				 * As long as the code reaches here, we obtain a whole image.
 				 */
+				
 				recvPacketCount = 0;
 				recvFrameCount++;
 				onFrameReceived(recvFrame,recvFrameCount);
