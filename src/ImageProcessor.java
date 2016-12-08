@@ -24,15 +24,16 @@ public class ImageProcessor {
 				th_mark_greenMaxDegree = 160,
 				th_mark_blueMinDegree = 220,
 				th_mark_blueMaxDegree = 300,
-				th_ls_grayVariation = 18,
 				th_tip_aboveLineLenth = 30,
-				th_press_rectWidth = 200,
+				th_press_rectWidth = 100,
 				th_press_rectHeight = 100;
 	private float th_mark_minS = (float) 0.25,
 				  th_mark_minB = (float) 0.25,
-				  th_ls_B1 = (float) 0.2,
-				  th_ls_B2 = (float) 0.7;
-	private double th_press_shadowPercentage = 2.5;
+				  th_ls_B1_ratio = (float) 0.3,
+				  th_ls_B2_ratio = (float) 1.2,
+				  th_ls_minB = (float) 0.25,
+				  th_ls_minB_var = (float) 0.25;
+	private double th_press_shadowPercentage = 1;
 	
 	/*
 	 * Variable declarations
@@ -292,14 +293,20 @@ public class ImageProcessor {
 	
 	private void layerSeparation(){
 		float avgB = avgBrightness();
-		System.out.println(avgB);
-		th_ls_B1 = (float) (avgB * 0.3);
-		th_ls_B2 = (float) (avgB * 1.5);
+		float th_ls_B1 = (float) (avgB * th_ls_B1_ratio);
+		float th_ls_B2 = (float) (avgB * th_ls_B2_ratio);
 		for(int x = 0; x < IMAGE_WIDTH; x++){
     		for(int y = 0; y < IMAGE_HEIGHT; y++){
-    			int basePixelGray = getPixelRGB(4, x, y)[2];
-    			int currentPixelGray = getPixelRGB(1, x, y)[2];
-    			if(Math.abs(basePixelGray - currentPixelGray) > th_ls_grayVariation){
+    			//int basePixelGray = getPixelRGB(4, x, y)[2];
+    			//int currentPixelGray = getPixelRGB(1, x, y)[2];
+    			int[] pixelRGB = getPixelRGB(0, x, y);
+    			int[] baseRGB = getPixelRGB(4, x, y);
+    			float[] pixelHSB = new float[3];
+    			float[] baseHSB = new float[3];
+    			Color.RGBtoHSB(pixelRGB[0], pixelRGB[1], pixelRGB[2], pixelHSB);
+    			Color.RGBtoHSB(baseRGB[0], baseRGB[1], baseRGB[2], baseHSB);
+    			boolean is_var = Math.abs(baseHSB[2] - pixelHSB[2]) > th_ls_minB_var;
+    			/*if(Math.abs(basePixelGray - currentPixelGray) > th_ls_grayVariation){
     				int[] pixelRGB = getPixelRGB(0, x, y);
         			float[] pixelHSB = new float[3];
         			Color.RGBtoHSB(pixelRGB[0], pixelRGB[1], pixelRGB[2], pixelHSB);
@@ -308,10 +315,20 @@ public class ImageProcessor {
         			}else if(pixelHSB[2] <= th_ls_B2){
         				images[3].setRGB(x, y, Color.BLUE.getRGB());
         			}else{
-        				images[3].setRGB(x, y, Color.WHITE.getRGB());
+        				images[3].setRGB(x, y, Color.RED.getRGB());
         			}   				
     			}else{
     				images[3].setRGB(x, y, Color.WHITE.getRGB());
+    			}*/
+    			
+    			if(pixelHSB[2] < th_ls_minB && is_var){
+    				images[3].setRGB(x, y, Color.BLACK.getRGB());
+    			}else {
+    				if(is_var){
+    					images[3].setRGB(x, y, Color.BLUE.getRGB());
+    				}else{
+    					images[3].setRGB(x, y, Color.WHITE.getRGB());
+    				}
     			}
     		}
     	}

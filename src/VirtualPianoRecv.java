@@ -228,7 +228,7 @@ public class VirtualPianoRecv {
             	 * Discard the whole frame.
             	 */
             	
-            	System.out.println("OutOfBound: " + recvPacketCount + ", " + receivePacket.getLength());
+            	//System.out.println("OutOfBound: " + recvPacketCount + ", " + receivePacket.getLength());
             	recvPacketCount = 0;
             	recvPacketError++;
             	continue;
@@ -239,13 +239,12 @@ public class VirtualPianoRecv {
 				/*
 				 * The size of the packet varies if it's the last one of the frame.
 				 */
-				System.out.println(recvPacketCount);
+				//System.out.println(recvPacketCount);
 				if(recvPacketCount != FRAME_SIZE / PACKET_SIZE + 1){
 					/*
 					 * But maybe the packet sequence is messed up.
 					 */
 					
-					System.out.println("A");
 					recvPacketCount = 0;
 					recvPacketError++;
 					continue;
