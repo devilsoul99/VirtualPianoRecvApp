@@ -134,9 +134,8 @@ public class VirtualPianoRecv {
 		/*
 		 * Show every result to the GUI.
 		 */
-		for(int i = 0; i < GPU.getImageBufferCount(); i++){
-			GUI.showImage(GPU.getImage(i), i);
-		}
+		
+		GUI.showImage(GPU.getImages(),GPU.getBaseLockState());
 		return;
 	}
 	
@@ -170,7 +169,9 @@ public class VirtualPianoRecv {
 		 */
 		int recvPacketCount = 0,
 		    recvPacketError = 0,
-		    recvFrameCount = 0;
+		    recvFrameCount = 0,
+		    currentWaitingFrameSeq = 0;
+		
 		byte[] recvFrame = new byte[FRAME_SIZE];
 		ButtonListener listener = new ButtonListener();
 		/*
@@ -202,7 +203,7 @@ public class VirtualPianoRecv {
 			/*
 			 * Allocates memory for incoming data.
 			 */
-			byte[] receiveData = new byte[PACKET_SIZE];
+			byte[] receiveData = new byte[PACKET_SIZE + 5];
 			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 			
 			/*
@@ -211,6 +212,7 @@ public class VirtualPianoRecv {
 			try {
 				serverSocket.receive(receivePacket);
 			} catch (IOException e) {
+				GUI.addLog("Error receiving packet " + recvPacketCount + " of frame " + recvFrameCount);
 				recvPacketError++;
 				continue;
 			}
@@ -219,42 +221,45 @@ public class VirtualPianoRecv {
 			 * Proceed if a packet successfully received,
 			 * load the data buffer into frame buffer.
 			 */
+			int incomingFrameSeq = receiveData[0]&0xFF;
+			int incomingPacket = ((receiveData[1]&0xFF)<<24) + ((receiveData[2]&0xFF)<<16) + ((receiveData[3]&0xFF)<<8) + (receiveData[4]&0xFF);
+			//System.out.println("GET " + incomingFrameSeq + ", " + incomingPacket + ",should be " + recvFrameCount);
 			try{
-            	System.arraycopy(receivePacket.getData(), 0, recvFrame, PACKET_SIZE*recvPacketCount, receivePacket.getLength());
-            	recvPacketCount++;
+				if(incomingFrameSeq == currentWaitingFrameSeq){
+					System.arraycopy(receivePacket.getData(), 5, recvFrame, PACKET_SIZE*incomingPacket, receivePacket.getLength() - 5);
+	            	recvPacketCount++;
+				}else{
+					//Not surely an error.
+					continue;
+				}
             }catch(ArrayIndexOutOfBoundsException e){
             	/*
             	 * This occur when a packet somehow is lost,
             	 * Discard the whole frame.
             	 */
-            	
-            	//System.out.println("OutOfBound: " + recvPacketCount + ", " + receivePacket.getLength());
+            	GUI.addLog("Out of bound exception on packet " + recvPacketCount + " of frame " + recvFrameCount);
             	recvPacketCount = 0;
             	recvPacketError++;
             	continue;
         	
             }
 			
-			if(receivePacket.getLength() != PACKET_SIZE){
+			if(receivePacket.getLength() != PACKET_SIZE + 5){
 				/*
 				 * The size of the packet varies if it's the last one of the frame.
 				 */
 				//System.out.println(recvPacketCount);
-				if(recvPacketCount != FRAME_SIZE / PACKET_SIZE + 1){
-					/*
-					 * But maybe the packet sequence is messed up.
-					 */
-					
+				int lossPacketCount = (FRAME_SIZE / PACKET_SIZE + 1) - recvPacketCount;
+				if(lossPacketCount >= 30){
+					GUI.addLog("Discard frame " + recvFrameCount + " due to too many packet loss");
 					recvPacketCount = 0;
 					recvPacketError++;
+					currentWaitingFrameSeq = 1 - currentWaitingFrameSeq;
 					continue;
 				}
-				/*
-				 * As long as the code reaches here, we obtain a whole image.
-				 */
-				
 				recvPacketCount = 0;
 				recvFrameCount++;
+				currentWaitingFrameSeq = 1 - currentWaitingFrameSeq;
 				onFrameReceived(recvFrame,recvFrameCount);
 			}
 		}

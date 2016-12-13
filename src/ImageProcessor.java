@@ -3,6 +3,11 @@ import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 
+import com.sun.org.apache.bcel.internal.generic.NEW;
+import com.sun.xml.internal.ws.org.objectweb.asm.Label;
+
+import sun.awt.util.IdentityArrayList;
+
 public class ImageProcessor {
 	/*
 	 * Constant declaration
@@ -10,10 +15,10 @@ public class ImageProcessor {
 	private final int IMAGE_WIDTH = 480,
 					  IMAGE_HEIGHT = 320,
 					  IMAGE_BUFFER_COUNT = 5,
-					  EX_MARK_RED_COUNT = 9,
-					  EX_MARK_GREEN_COUNT = 9,
+					  EX_MARK_RED_COUNT = 12,
+					  EX_MARK_GREEN_COUNT = 12,
 					  EX_MARK_BLUE_COUNT = 2,
-					  EX_KEY_COUNT = 8;
+					  EX_KEY_COUNT = 11;
 	
 	/*
 	 * Threshold declarations
@@ -45,7 +50,8 @@ public class ImageProcessor {
 	private int[][] keyArea = new int[IMAGE_WIDTH][IMAGE_HEIGHT];
 	private int labelNumberRed,
 				labelNumberGreen,
-				labelNumberBlue;
+				labelNumberBlue,
+				topestRedPointY;
 	private boolean isBaseLocked = false,
 					isWhiteBalanceOn = false;
 	private boolean[] iskeyPlaying = new boolean[EX_KEY_COUNT * 2];
@@ -108,7 +114,7 @@ public class ImageProcessor {
 					}
 	    			if(left > 0 && right < 0 && y > redMark[key].getY() && y < greenMark[key].getY()){
 	    				keyArea[x][y] = key;
-	    				int keyColor = (key + 1) * 30;
+	    				int keyColor = (key + 1) * 22;
 	    				images[2].setRGB(x, y, (keyColor << 16) + (keyColor << 8) + keyColor);
 	    			}          			            			
 	    		}
@@ -159,19 +165,19 @@ public class ImageProcessor {
 		}
 		if(markedColor == Color.RED.getRGB()){
 			labelTag[x][y] = labelNumberRed;
-			if(labelNumberRed < 9){
+			if(labelNumberRed < EX_MARK_RED_COUNT){
 				redMark[labelNumberRed] = new Point(x,y);
 			}
 			labelNumberRed++;
 		}else if(markedColor == Color.GREEN.getRGB()){
 			labelTag[x][y] = labelNumberGreen;
-			if(labelNumberGreen < 9){
+			if(labelNumberGreen < EX_MARK_GREEN_COUNT){
 				greenMark[labelNumberGreen] = new Point(x,y);
 			}
 			labelNumberGreen++;			
 		}else if(markedColor==Color.BLUE.getRGB()){
 			labelTag[x][y] = labelNumberBlue;
-			if(labelNumberBlue < 2){
+			if(labelNumberBlue < EX_MARK_BLUE_COUNT){
 				blueMark[labelNumberBlue] = new Point(x,y);
 			}
 			labelNumberBlue++;
@@ -269,15 +275,26 @@ public class ImageProcessor {
     			writeLabel(pixelLabel, x, y);	            			
     		}
     	}
-		if(labelNumberRed != 9 || labelNumberGreen != 9 || labelNumberBlue != 2){
+		System.out.println("Label detected: " + labelNumberRed + ", " + labelNumberGreen + ", " + labelNumberBlue);
+		if(labelNumberRed != EX_MARK_RED_COUNT || labelNumberGreen != EX_MARK_GREEN_COUNT || labelNumberBlue != EX_MARK_BLUE_COUNT){
 			isBaseLocked = false;
     	}else{
     		writeArea();
+    		findTopestRedPoint();
     		isBaseLocked = true;
     	}
 		return isBaseLocked;
 	}
 
+	private void findTopestRedPoint(){
+		topestRedPointY = redMark[0].y; 
+		for(int i = 1; i < redMark.length; i++) {
+			if(redMark[i].y < topestRedPointY) {
+				topestRedPointY = redMark[i].y;
+			}
+		}
+	}
+	
 	private float avgBrightness(){
 		float avgB = (float) 0;
 		for(int x = 0; x < IMAGE_WIDTH; x++){
@@ -292,35 +309,15 @@ public class ImageProcessor {
 	}
 	
 	private void layerSeparation(){
-		float avgB = avgBrightness();
-		float th_ls_B1 = (float) (avgB * th_ls_B1_ratio);
-		float th_ls_B2 = (float) (avgB * th_ls_B2_ratio);
 		for(int x = 0; x < IMAGE_WIDTH; x++){
-    		for(int y = 0; y < IMAGE_HEIGHT; y++){
-    			//int basePixelGray = getPixelRGB(4, x, y)[2];
-    			//int currentPixelGray = getPixelRGB(1, x, y)[2];
+    		for(int y = topestRedPointY; y < IMAGE_HEIGHT; y++){
     			int[] pixelRGB = getPixelRGB(0, x, y);
     			int[] baseRGB = getPixelRGB(4, x, y);
     			float[] pixelHSB = new float[3];
     			float[] baseHSB = new float[3];
     			Color.RGBtoHSB(pixelRGB[0], pixelRGB[1], pixelRGB[2], pixelHSB);
     			Color.RGBtoHSB(baseRGB[0], baseRGB[1], baseRGB[2], baseHSB);
-    			boolean is_var = Math.abs(baseHSB[2] - pixelHSB[2]) > th_ls_minB_var;
-    			/*if(Math.abs(basePixelGray - currentPixelGray) > th_ls_grayVariation){
-    				int[] pixelRGB = getPixelRGB(0, x, y);
-        			float[] pixelHSB = new float[3];
-        			Color.RGBtoHSB(pixelRGB[0], pixelRGB[1], pixelRGB[2], pixelHSB);
-        			if(pixelHSB[2] <= th_ls_B1){
-        				images[3].setRGB(x, y, Color.BLACK.getRGB());
-        			}else if(pixelHSB[2] <= th_ls_B2){
-        				images[3].setRGB(x, y, Color.BLUE.getRGB());
-        			}else{
-        				images[3].setRGB(x, y, Color.RED.getRGB());
-        			}   				
-    			}else{
-    				images[3].setRGB(x, y, Color.WHITE.getRGB());
-    			}*/
-    			
+    			boolean is_var = Math.abs(baseHSB[2] - pixelHSB[2]) > th_ls_minB_var;    			
     			if(pixelHSB[2] < th_ls_minB && is_var){
     				images[3].setRGB(x, y, Color.BLACK.getRGB());
     			}else {
@@ -337,7 +334,7 @@ public class ImageProcessor {
 	private void drawCross(Point intersectiion, int color){
 		int interX = (int)intersectiion.getX();
 		int interY = (int)intersectiion.getY();
-		for(int y = 0; y < IMAGE_HEIGHT; y++){
+		for(int y = topestRedPointY; y < IMAGE_HEIGHT; y++){
 			images[3].setRGB(interX, y, color);
 		}
 		for(int x = 0; x < IMAGE_WIDTH; x++){
@@ -353,7 +350,7 @@ public class ImageProcessor {
 		 * 2. The pixel below it is not black
 		 * 3. 5 pixels above is all black
 		 */
-		for(int y = IMAGE_HEIGHT - 1; y >= 0; y--){
+		for(int y = IMAGE_HEIGHT - 1; y >= topestRedPointY; y--){
 			for(int x = 0; x < IMAGE_WIDTH; x++){
 				if(images[3].getRGB(x, y) == Color.BLACK.getRGB()){
 					if(y + 1 < IMAGE_HEIGHT && images[3].getRGB(x, y + 1) != 0){
@@ -386,8 +383,8 @@ public class ImageProcessor {
 	private String tipKey(Point tip){
 		int onTipKey = keyArea[(int)tip.getX()][(int)tip.getY()];
 		if(onTipKey != -1){
-			boolean isBlackKeys = tip.getY() > blueMark[0].getY() && onTipKey != 5 && onTipKey != 1 && onTipKey != 0;
-			int keyIndex = isBlackKeys? (EX_KEY_COUNT - onTipKey - 1) * 2 + 1: (EX_KEY_COUNT - onTipKey - 1) * 2;
+			boolean isBlackKeys = tip.getY() > blueMark[0].getY() && onTipKey != 2 && onTipKey != 6 && onTipKey != 9;
+			int keyIndex = isBlackKeys? (EX_KEY_COUNT - onTipKey - 1) * 2: (EX_KEY_COUNT - onTipKey) * 2 - 1;
 			if(!iskeyPlaying[keyIndex]){
 				keyReset();
 				iskeyPlaying[keyIndex] = true;
@@ -428,6 +425,11 @@ public class ImageProcessor {
 		/*
 		 * Separates the shadow and the hand from background.
 		 */
+		for(int y = 0; y <= topestRedPointY; y++){
+			for(int x = 0; x < IMAGE_WIDTH; x++){
+				images[3].setRGB(x, y, Color.WHITE.getRGB());
+			}
+		}
 		layerSeparation();
 		Point tipPoint = findTip();
 		if(tipPoint != null){
@@ -476,11 +478,12 @@ public class ImageProcessor {
 	    return true;
 	}
 
-  	public BufferedImage getImage(int seq){
-  		if(seq >= 0 && seq < images.length){
-  			return images[seq];
-  		}
-  		return null;
+  	public BufferedImage[] getImages(){
+  		return images;
+  	}
+  	
+  	public boolean getBaseLockState(){
+  		return isBaseLocked;
   	}
   	
   	public int getImageBufferCount(){
@@ -537,7 +540,6 @@ public class ImageProcessor {
 		 */
 		int[] orgImageRGB = new int[IMAGE_WIDTH * IMAGE_HEIGHT * 3];
 		if(YV12ToRGB24(frameData,orgImageRGB,IMAGE_WIDTH,IMAGE_HEIGHT)){
-			
 			for(int i = 0; i < orgImageRGB.length; i += 3){
 				/*
 				 * For each pixel's RGB, copy to original BufferedImage.

@@ -164,10 +164,17 @@ public class UserInterface {
 		return;
 	}
 	
-	public void showImage(BufferedImage subject, int position){
-		if(position >= 0 && position < imgLabel.length && subject != null){
-			imgLabel[position].setIcon(new ImageIcon(subject));
+	public void showImage(BufferedImage[] subject, boolean isBaseLock){
+		if(isBaseLock){
+			imgLabel[0].setIcon(new ImageIcon(subject[3]));
+			imgLabel[1].setIcon(new ImageIcon(subject[2]));
+		}else{
+			imgLabel[0].setIcon(new ImageIcon(subject[0]));
+			imgLabel[1].setIcon(new ImageIcon(subject[2]));
 		}
+		/*if(position >= 0 && position < imgLabel.length && subject != null){
+			imgLabel[position].setIcon(new ImageIcon(subject));
+		}*/
 		return;
 	}
 	
