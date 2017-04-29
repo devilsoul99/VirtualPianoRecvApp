@@ -2,6 +2,9 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
+import java.io.File;
+
+import javax.imageio.ImageIO;
 
 import com.sun.org.apache.bcel.internal.generic.NEW;
 import com.sun.xml.internal.ws.org.objectweb.asm.Label;
@@ -23,39 +26,37 @@ public class ImageProcessor {
 	/*
 	 * Threshold declarations
 	 */
-	private int th_mark_redMinDegree = 320,
-				th_mark_redMaxDegree = 40,
+	private int th_mark_redMinDegree = 340,
+				th_mark_redMaxDegree = 20,
 				th_mark_greenMinDegree = 80,
 				th_mark_greenMaxDegree = 160,
 				th_mark_blueMinDegree = 220,
-				th_mark_blueMaxDegree = 300,
+				th_mark_blueMaxDegree = 330,
 				th_tip_aboveLineLenth = 30,
-				th_press_rectWidth = 100,
-				th_press_rectHeight = 100;
-	private float th_mark_minS = (float) 0.25,
-				  th_mark_minB = (float) 0.25,
-				  th_ls_B1_ratio = (float) 0.3,
-				  th_ls_B2_ratio = (float) 1.2,
-				  th_ls_minB = (float) 0.25,
-				  th_ls_minB_var = (float) 0.25;
-	private double th_press_shadowPercentage = 1;
+				th_press_rectWidth = 50,
+				th_press_rectHeight = 50;
+	private float th_mark_minS = (float) 0.15,
+				  th_mark_minB = (float) 0.15,
+				  th_ls_hand_maxB = (float) 0.35,
+				  th_ls_var = (float) 0.35;
+	private double th_press_shadowPercentage = 1.2;
 	
 	/*
 	 * Variable declarations
 	 */
 	private BufferedImage[] images = new BufferedImage[IMAGE_BUFFER_COUNT];
+	public BufferedImage gameView;
 	private Point[] redMark = new Point[EX_MARK_RED_COUNT],
 					greenMark = new Point[EX_MARK_GREEN_COUNT],
 					blueMark = new Point[EX_MARK_BLUE_COUNT];
 	private int[][] keyArea = new int[IMAGE_WIDTH][IMAGE_HEIGHT];
 	private int labelNumberRed,
 				labelNumberGreen,
-				labelNumberBlue,
-				topestRedPointY;
+				labelNumberBlue;
 	private boolean isBaseLocked = false,
 					isWhiteBalanceOn = false;
 	private boolean[] iskeyPlaying = new boolean[EX_KEY_COUNT * 2];
-	
+	private float blueSlopePerKey;
 	public ImageProcessor(){
 		/*
 		 * Allocates BufferedImage: 0 -> original image
@@ -69,6 +70,49 @@ public class ImageProcessor {
 		images[2] = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
 		images[3] = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
 		images[4] = new BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_BYTE_GRAY);
+	}
+	
+	public void gameInitialize(){
+		try {
+			gameView = ImageIO.read(new File("game\\key.jpg"));
+		} catch (Exception e) {
+		    e.printStackTrace();
+		}
+		return;
+	}
+	
+	public ArgumentSetting getArgumentSetting(){
+		ArgumentSetting rv = new ArgumentSetting();
+		rv.th_mark_redMinDegree = th_mark_redMinDegree;
+		rv.th_mark_redMaxDegree = th_mark_redMaxDegree;
+		rv.th_mark_greenMinDegree = th_mark_greenMinDegree;
+		rv.th_mark_greenMaxDegree = th_mark_greenMaxDegree;
+		rv.th_mark_blueMinDegree = th_mark_blueMinDegree;
+		rv.th_mark_blueMaxDegree = th_mark_blueMaxDegree;
+		rv.th_press_rectWidth = th_press_rectWidth;
+		rv.th_press_rectHeight = th_press_rectHeight;
+		rv.th_mark_minS = th_mark_minS;
+		rv.th_mark_minB = th_mark_minB;
+		rv.th_ls_hand_maxB = th_ls_hand_maxB;
+		rv.th_ls_var = th_ls_var;
+		rv.th_press_shadowPercentage = th_press_shadowPercentage;
+		return rv;
+	}
+	
+	public void setArgumentSetting(ArgumentSetting a){
+		th_mark_redMinDegree = (a.th_mark_redMinDegree>=0 && a.th_mark_redMinDegree<=360)? a.th_mark_redMinDegree:th_mark_redMinDegree;
+		th_mark_redMaxDegree = (a.th_mark_redMaxDegree>=0 && a.th_mark_redMaxDegree<=360)? a.th_mark_redMaxDegree:th_mark_redMaxDegree;
+		th_mark_greenMinDegree = (a.th_mark_greenMinDegree>=0 && a.th_mark_greenMinDegree<=360)? a.th_mark_greenMinDegree:th_mark_greenMinDegree;
+		th_mark_greenMaxDegree = (a.th_mark_greenMaxDegree>=0 && a.th_mark_greenMaxDegree<=360)? a.th_mark_greenMaxDegree:th_mark_greenMaxDegree;
+		th_mark_blueMinDegree = (a.th_mark_blueMinDegree>=0 && a.th_mark_blueMinDegree<=360)? a.th_mark_blueMinDegree:th_mark_blueMinDegree;
+		th_mark_blueMaxDegree = (a.th_mark_blueMaxDegree>=0 && a.th_mark_blueMaxDegree<=360)? a.th_mark_blueMaxDegree:th_mark_blueMaxDegree;
+		th_mark_minS = (a.th_mark_minS >= 0 && a.th_mark_minS<=1)? a.th_mark_minS:th_mark_minS;
+		th_mark_minB = (a.th_mark_minB >= 0 && a.th_mark_minB<=1)? a.th_mark_minB:th_mark_minB;
+		th_ls_hand_maxB = (a.th_ls_hand_maxB >= 0 && a.th_ls_hand_maxB<=1)? a.th_ls_hand_maxB:th_ls_hand_maxB;
+		th_ls_var = (a.th_ls_var >= 0 && a.th_ls_var<=1)? a.th_ls_var:th_ls_var;
+		th_press_rectWidth = (a.th_press_rectWidth >= 0 && a.th_press_rectWidth<=IMAGE_WIDTH)? a.th_press_rectWidth:th_press_rectWidth;
+		th_press_rectHeight = (a.th_press_rectHeight >= 0 && a.th_press_rectHeight<=IMAGE_HEIGHT)? a.th_press_rectHeight:th_press_rectHeight;
+		th_press_shadowPercentage =  (a.th_press_shadowPercentage >= 0 && a.th_press_shadowPercentage<=100)? a.th_press_shadowPercentage:th_press_shadowPercentage;
 	}
 	
 	private int[] getPixelRGB(int subIndex, int x, int y){
@@ -280,45 +324,23 @@ public class ImageProcessor {
 			isBaseLocked = false;
     	}else{
     		writeArea();
-    		findTopestRedPoint();
+    		blueSlopePerKey = (float) (((float)(blueMark[1].y - blueMark[0].y)) / ((float)(EX_KEY_COUNT)));
     		isBaseLocked = true;
     	}
 		return isBaseLocked;
 	}
-
-	private void findTopestRedPoint(){
-		topestRedPointY = redMark[0].y; 
-		for(int i = 1; i < redMark.length; i++) {
-			if(redMark[i].y < topestRedPointY) {
-				topestRedPointY = redMark[i].y;
-			}
-		}
-	}
-	
-	private float avgBrightness(){
-		float avgB = (float) 0;
-		for(int x = 0; x < IMAGE_WIDTH; x++){
-    		for(int y = 0; y < IMAGE_HEIGHT; y++){
-    			float[] pixelHSB = new float[3];
-    			int[] pixelRGB = getPixelRGB(0, x, y);
-    			Color.RGBtoHSB(pixelRGB[0], pixelRGB[1], pixelRGB[2], pixelHSB);
-    			avgB += pixelHSB[2];
-    		}
-		}
-		return avgB / (IMAGE_HEIGHT * IMAGE_WIDTH);
-	}
 	
 	private void layerSeparation(){
 		for(int x = 0; x < IMAGE_WIDTH; x++){
-    		for(int y = topestRedPointY; y < IMAGE_HEIGHT; y++){
+    		for(int y = 0; y < IMAGE_HEIGHT; y++){
     			int[] pixelRGB = getPixelRGB(0, x, y);
     			int[] baseRGB = getPixelRGB(4, x, y);
     			float[] pixelHSB = new float[3];
     			float[] baseHSB = new float[3];
     			Color.RGBtoHSB(pixelRGB[0], pixelRGB[1], pixelRGB[2], pixelHSB);
     			Color.RGBtoHSB(baseRGB[0], baseRGB[1], baseRGB[2], baseHSB);
-    			boolean is_var = Math.abs(baseHSB[2] - pixelHSB[2]) > th_ls_minB_var;    			
-    			if(pixelHSB[2] < th_ls_minB && is_var){
+    			boolean is_var = Math.abs(baseHSB[2] - pixelHSB[2]) > th_ls_var;    			
+    			if(pixelHSB[2] < th_ls_hand_maxB && is_var){
     				images[3].setRGB(x, y, Color.BLACK.getRGB());
     			}else {
     				if(is_var){
@@ -334,7 +356,7 @@ public class ImageProcessor {
 	private void drawCross(Point intersectiion, int color){
 		int interX = (int)intersectiion.getX();
 		int interY = (int)intersectiion.getY();
-		for(int y = topestRedPointY; y < IMAGE_HEIGHT; y++){
+		for(int y = 0; y < IMAGE_HEIGHT; y++){
 			images[3].setRGB(interX, y, color);
 		}
 		for(int x = 0; x < IMAGE_WIDTH; x++){
@@ -350,7 +372,7 @@ public class ImageProcessor {
 		 * 2. The pixel below it is not black
 		 * 3. 5 pixels above is all black
 		 */
-		for(int y = IMAGE_HEIGHT - 1; y >= topestRedPointY; y--){
+		for(int y = IMAGE_HEIGHT - 1; y >= 0; y--){
 			for(int x = 0; x < IMAGE_WIDTH; x++){
 				if(images[3].getRGB(x, y) == Color.BLACK.getRGB()){
 					if(y + 1 < IMAGE_HEIGHT && images[3].getRGB(x, y + 1) != 0){
@@ -383,7 +405,7 @@ public class ImageProcessor {
 	private String tipKey(Point tip){
 		int onTipKey = keyArea[(int)tip.getX()][(int)tip.getY()];
 		if(onTipKey != -1){
-			boolean isBlackKeys = tip.getY() > blueMark[0].getY() && onTipKey != 2 && onTipKey != 6 && onTipKey != 9;
+			boolean isBlackKeys = tip.getY() > blueMark[0].y + (blueSlopePerKey*((float)onTipKey+0.5)) && onTipKey != 2 && onTipKey != 6 && onTipKey != 9;
 			int keyIndex = isBlackKeys? (EX_KEY_COUNT - onTipKey - 1) * 2: (EX_KEY_COUNT - onTipKey) * 2 - 1;
 			if(!iskeyPlaying[keyIndex]){
 				keyReset();
@@ -425,11 +447,7 @@ public class ImageProcessor {
 		/*
 		 * Separates the shadow and the hand from background.
 		 */
-		for(int y = 0; y <= topestRedPointY; y++){
-			for(int x = 0; x < IMAGE_WIDTH; x++){
-				images[3].setRGB(x, y, Color.WHITE.getRGB());
-			}
-		}
+
 		layerSeparation();
 		Point tipPoint = findTip();
 		if(tipPoint != null){

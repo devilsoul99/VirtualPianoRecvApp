@@ -5,6 +5,8 @@
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -12,6 +14,8 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.*;
+
+
 
 public class VirtualPianoRecv {
 	/*
@@ -31,7 +35,12 @@ public class VirtualPianoRecv {
 	 */
 	private static UserInterface GUI;
 	private static ImageProcessor GPU;
-	private static boolean isServerSocketCreated;
+	private static boolean isServerSocketCreated,
+						   isGameMode = false,
+						   isGameCompleted = true;
+	private static String[] trackSequence;
+	private static int trackProgress;
+	private static int game_totalHit, game_correctHit;
 	
 	private static DatagramSocket createSocket(){
 		/*
@@ -94,7 +103,36 @@ public class VirtualPianoRecv {
 			if(debugMode){
 				GUI.addLog("Pressed Key: " + m);
 			}
-			GUI.playSound(m);
+			if(isGameMode && !isGameCompleted){
+				if(trackSequence[trackProgress].equals(m)){
+					GUI.playSound(m);
+					game_correctHit++;
+					game_totalHit++;
+					trackProgress++;
+					if(trackProgress >= trackSequence.length){
+						isGameCompleted = true;
+						GUI.showGameView("e");
+						
+						double rate = (double)game_correctHit / (double) game_totalHit;
+						if(rate >= 0.8){
+							GUI.playSound("_success");
+						}else{
+							GUI.playSound("boo");
+						}
+						game_totalHit = 0;
+						game_correctHit = 0;
+					}else{
+						GUI.showGameView(trackSequence[trackProgress]);
+					}
+				}else{
+					int n = (int)(Math.random() * 3 + 1);
+					GUI.playSound("_wrong" + n);
+					game_totalHit++;
+				}
+				GUI.updateGameUI(game_totalHit, game_correctHit);
+			}else{
+				GUI.playSound(m);
+			}
 			return;
 		}
 	}
@@ -152,15 +190,66 @@ public class VirtualPianoRecv {
 				}else{
 					GUI.addLog("Base lock failed, adjust the picture or camera then retry.");
 				}
-			}else if(command.equals("White Balance Switch")){
+			}else if(command.equals("White Balance")){
 				if(GPU.switchWhiteBalance()){
 					GUI.addLog("White balance ON");
 				}else{
 					GUI.addLog("White balance OFF");
 				}
+			}else if(command.equals("Apply Arguments")){
+				GPU.setArgumentSetting(GUI.getArgumentField());
+				GUI.setArgumentField(GPU.getArgumentSetting());
+				GUI.addLog("Arguments applied.");
+			}else if(command.equals("Game Mode")){
+				if(!isGameMode && !GPU.getBaseLockState()){
+					GUI.addLog("Base lock first, then retry");
+					return;
+				}
+				isGameMode = !isGameMode;
+				GUI.gameModeSwitch(isGameMode);
+				if(isGameMode){
+					trackProgress = 0;
+					gameStart();
+					GUI.showGameView(trackSequence[trackProgress]);
+				}
 			}
 			
 		}
+	}
+	
+	public static void gameStart(){
+		try {
+			FileReader fr=new FileReader("game\\track.dat");
+			BufferedReader br=new BufferedReader(fr);
+			String line;
+			int lineCount = 0;
+			while ((line = br.readLine()) != null) {
+				lineCount ++;
+			}
+			br.close();
+			int trackCount = lineCount / 2;
+			int trackNumber = (int)(Math.random() * trackCount + 1);
+			
+			fr=new FileReader("game\\track.dat");
+			br=new BufferedReader(fr);
+			lineCount = 0;
+			String trackTitle = "";
+			while ((line = br.readLine()) != null) {
+				lineCount++;
+				if(lineCount == trackNumber * 2 - 1){
+					trackTitle = line;
+				}else if(lineCount == trackNumber * 2){
+					trackSequence = line.split(" ");
+				}
+			}
+			GUI.gameSetTitle(trackTitle);
+			isGameCompleted = false;
+			game_totalHit = 0;
+			game_correctHit = 0;
+			br.close();
+			
+		}catch(Exception e){}
+		
 	}
 	
 	public static void main(String[] args) {
@@ -182,6 +271,7 @@ public class VirtualPianoRecv {
 		GUI.loadElements();
 		GUI.setMainVisible(true);
 		GUI.importListener(listener);
+		
 		/*
 		 * Initializing socket, then obtain the local IP and port,
 		 * this step is required for android application settings.
@@ -196,7 +286,7 @@ public class VirtualPianoRecv {
 		 * Instantiate a ImageProcessor.
 		 */
 		GPU = new ImageProcessor();
-		
+		GUI.setArgumentField(GPU.getArgumentSetting());
 		while(isServerSocketCreated){
 			GUI.trafficUpdate(recvPacketCount,recvPacketError,recvFrameCount);
 			
@@ -251,7 +341,9 @@ public class VirtualPianoRecv {
 				//System.out.println(recvPacketCount);
 				int lossPacketCount = (FRAME_SIZE / PACKET_SIZE + 1) - recvPacketCount;
 				if(lossPacketCount >= 30){
-					GUI.addLog("Discard frame " + recvFrameCount + " due to too many packet loss");
+					if(debugMode){
+						GUI.addLog("Discard frame " + recvFrameCount + " due to too many packet loss");
+					}
 					recvPacketCount = 0;
 					recvPacketError++;
 					currentWaitingFrameSeq = 1 - currentWaitingFrameSeq;
